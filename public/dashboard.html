@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Form Filler Dashboard</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input, button { padding: 0.5rem; margin-top: 1rem; width: 100%; }
+    #status { margin-top: 1rem; color: green; }
+  </style>
+</head>
+<body>
+  <h2>Paste Google Form URL</h2>
+  <input type="text" id="formUrl" placeholder="https://docs.google.com/forms/...">
+  <button onclick="submitForm()">Autofill Form</button>
+
+  <!-- ✅ Logout button -->
+  <button onclick="logout()">Logout</button>
+
+  <div id="status"></div>
+
+  <script>
+    async function submitForm() {
+      const formUrl = document.getElementById('formUrl').value;
+      const status = document.getElementById('status');
+      status.textContent = '⏳ Filling form...';
+
+      try {
+        const res = await fetch('/form/autofill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ formUrl })
+        });
+
+        const text = await res.text();
+        status.textContent = text;
+      } catch (err) {
+        status.textContent = '❌ Error: ' + err.message;
+      }
+    }
+
+    // ✅ Logout function
+    function logout() {
+      window.location.href = '/logout';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Form Autofill Login</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .container {
+      background: white;
+      padding: 2rem 3rem;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    a.login-btn {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #4285F4;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 5px;
+      transition: background 0.3s ease;
+    }
+    a.login-btn:hover {
+      background-color: #3367D6;
+    }
+    button.submit-btn {
+      margin-top: 1rem;
+      padding: 10px 20px;
+      background-color: #34A853;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button.submit-btn:hover {
+      background-color: #2c8c47;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Welcome to AI Form Autofill</h1>
+    <p>Sign in with your Google account to begin</p>
+    <a class="login-btn" href="https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=http://localhost:5000/oauth/callback&response_type=code&scope=email%20profile%20openid">Login with Google</a>
+
+    <!-- ✅ New Submit Button -->
+    <button class="submit-btn" onclick="submitForm()">Submit Form</button>
+  </div>
+
+  <!-- ✅ Submit Form Script -->
+  
+<script>
+  async function submitForm() {
+    const formUrl = document.getElementById('formUrl').value;
+    if (!formUrl.startsWith('https://docs.google.com/forms')) {
+      alert('❌ Invalid form URL');
+      return;
+    }
+
+    const response = await fetch('http://localhost:5000/form/submit', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ formUrl })
+    });
+
+
+      const result = await response.json();
+      console.log(result);
+      alert(result.success ? '✅ Form submitted!' : `❌ Error: ${result.error}`);
+    }
+  </script>
+</body>
+</html>

@@ -1,38 +1,22 @@
-import passport from 'passport';
-import GoogleStrategy from 'passport-google-oauth20';
-import session from 'express-session';
+// backend/services/authService.js
 
 export function setupGoogleAuth(app) {
-  app.use(session({
-    secret: 'your-sedd03f0035bd218ddf7f436dad039da548434da1d312f03d01beea51a3455ca0dcret-key',
-    resave: false,
-    saveUninitialized: true
-  }));
+  /**
+   * Step 1: Redirect user to Google OAuth
+   */
+  app.get('/auth/google', (req, res) => {
+    const params = new URLSearchParams({
+      client_id: process.env.CLIENT_ID,
+      redirect_uri: process.env.REDIRECT_URI,
+      response_type: 'code',
+      scope: 'openid profile email',
+      access_type: 'offline',
+      prompt: 'consent'
+    });
 
-  app.use(passport.initialize());
-  app.use(passport.session());
+    const googleAuthUrl =
+      `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-  passport.serializeUser((user, done) => done(null, user));
-  passport.deserializeUser((obj, done) => done(null, obj));
-
-  passport.use(new GoogleStrategy({
-    clientID: '93045755520-j32ok5v3u5qh3mf9hpqi6nhefdmakdvr.apps.googleusercontent.com',
-    clientSecret: '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',
-    callbackURL: 'http://localhost:5000/oauth/callback'
-  }, (accessToken, refreshToken, profile, done) => {
-    profile.accessToken = accessToken;
-    return done(null, profile);
-  }));
-
-  app.get('/auth/google', passport.authenticate('google', {
-    scope: ['profile', 'email']
-  }));
-
-  app.get('/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/' }),
-    (req, res) => {
-      req.session.token = req.user.accessToken;
-      res.redirect('/form');
-    }
-  );
+    res.redirect(googleAuthUrl);
+  });
 }

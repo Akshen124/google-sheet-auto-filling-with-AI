@@ -11,6 +11,7 @@ import { setupGoogleAuth } from './services/authService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+
 dotenv.config();
 
 const fetch = (...args) =>
@@ -26,11 +27,11 @@ app.use(cors({
 
 // ✅ Session
 app.use(session({
-  secret: process.env.CLIENT_SECRET,
+  secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: false, // true only if HTTPS + proxy
     httpOnly: true,
     sameSite: 'lax'
   }
@@ -64,7 +65,7 @@ app.get('/oauth/callback', async (req, res) => {
         code,
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET,
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+        redirect_uri: process.env.REDIRECT_URI,
         grant_type: 'authorization_code'
       })
     });

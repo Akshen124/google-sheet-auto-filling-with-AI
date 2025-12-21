@@ -1,58 +1,49 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 import express from 'express';
-import cors from 'cors';
 import session from 'express-session';
-import formRoutes from './routes/form.js';
-import { autoFillGoogleForm } from './services/playwright.mjs';
-import { setupGoogleAuth } from './services/authService.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
+import fetch from 'node-fetch';
+import path from 'path';
+import dotenv from 'dotenv';
+import formRoutes from './routes/formRoutes.js';
+import autoFillGoogleForm from './utils/autoFillGoogleForm.js';
 
 dotenv.config();
 
-const fetch = (...args) =>
-  import('node-fetch').then(({ default: fetch }) => fetch(...args));
-
 const app = express();
 
-// ✅ CORS (production safe)
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
-
-// ✅ Session
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: false, // true only if HTTPS + proxy
-    httpOnly: true,
-    sameSite: 'lax'
-  }
-}));
-
+// -------------------- MIDDLEWARE --------------------
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.urlencoded({ extended: true }));
 
-// Google OAuth
-setupGoogleAuth(app);
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: true,        // Render uses HTTPS
+      sameSite: 'lax'
+    }
+  })
+);
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+// -------------------- GOOGLE OAUTH --------------------
+
+// 👉 STEP 1: Authorization (THIS WAS MISSING BEFORE)
+app.get('/auth/google', (req, res) => {
+  const params = new URLSearchParams({
+    client_id: process.env.CLIENT_ID,
+    redirect_uri: process.env.REDIRECT_URI,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'offline',
+    prompt: 'consent'
+  });
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+  res.redirect(authUrl);
 });
 
-app.get('/form', (req, res) => {
-  const token = req.session.token || req.session.accessToken;
-  if (!token) return res.status(401).send('❌ Not logged in');
-  res.send('✅ Logged in successfully');
-});
-
+// 👉 STEP 2: Callback (your logic – corrected & kept)
 app.get('/oauth/callback', async (req, res) => {
   const code = req.query.code;
   if (!code) return res.status(400).send('❌ No code received');
@@ -71,17 +62,35 @@ app.get('/oauth/callback', async (req, res) => {
     });
 
     const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
 
-    if (!accessToken) return res.status(400).send('Token exchange failed');
+    if (!tokenData.access_token) {
+      console.error(tokenData);
+      return res.status(400).send('❌ Token exchange failed');
+    }
 
-    req.session.accessToken = accessToken;
+    // Save token in session
+    req.session.accessToken = tokenData.access_token;
+
+    // Redirect back to frontend
     res.redirect(process.env.FRONTEND_URL);
 
   } catch (err) {
     console.error(err);
-    res.status(500).send('OAuth failed');
+    res.status(500).send('❌ OAuth failed');
   }
+});
+
+// -------------------- APP ROUTES --------------------
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+});
+
+app.get('/form', (req, res) => {
+  if (!req.session.accessToken)
+    return res.status(401).send('❌ Not logged in');
+
+  res.send('✅ Logged in successfully');
 });
 
 app.post('/form/submit', async (req, res) => {
@@ -95,6 +104,7 @@ app.post('/form/submit', async (req, res) => {
     await autoFillGoogleForm(formUrl, accessToken);
     res.json({ success: true });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Autofill failed' });
   }
 });
@@ -105,7 +115,9 @@ app.get('/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/'));
 });
 
-const PORT = process.env.PORT || 5000;
+// -------------------- SERVER --------------------
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });

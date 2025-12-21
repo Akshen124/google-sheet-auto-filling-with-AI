@@ -1,9 +1,5 @@
-// backend/services/authService.js
 
 export function setupGoogleAuth(app) {
-  /**
-   * Step 1: Redirect user to Google OAuth
-   */
   app.get('/auth/google', (req, res) => {
     const params = new URLSearchParams({
       client_id: process.env.CLIENT_ID,
